@@ -84,7 +84,7 @@ bm.addBlock(new Block().withTitle("Silver").withId((byte) 22).withTextureAtlasPo
 // <--
 
 // Light sources
-bm.addBlock(new Block().withTitle("Torch").withId((byte) 29).withTextureAtlasPos(new Vector2f(0, 5)).withTranslucent(true).withPenetrable(true).withBlockForm(BLOCK_FORM.BILLBOARD).withLuminance((byte) 15).withAllowBlockAttachment(false))
+bm.addBlock(new Block().withTitle("Torch").withId((byte) 29).withTextureAtlasPos(new Vector2f(0, 5)).withTranslucent(true).withPenetrable(true).withBlockForm(BLOCK_FORM.BILLBOARD).withLuminance((byte) 20).withAllowBlockAttachment(false))
 // <--
 
 // Leafs
