@@ -14,6 +14,8 @@ System {
     // Enable/or disable the persisting of chunks
     saveChunks = true
 
+    chunkCacheSize = 1024
+
     Debug {
 
         debug = false
@@ -38,8 +40,8 @@ Graphics {
 
     fov = 64.0d
 
-    viewingDistanceX = 32
-    viewingDistanceZ = 32
+    viewingDistanceX = 25
+    viewingDistanceZ = 25
 
 }
 
@@ -92,7 +94,7 @@ Player {
 
 World {
 
-    defaultSeed = "nPuXlZhIiLoApInO"
+    defaultSeed = "nXhTnOmGgLsZmWhO"
 
     dayNightLengthInMs = new Long((60 * 1000) * 20) // 20 minutes in ms
     initialTimeOffsetInMs = new Long(60 * 1000) // 120 seconds in ms

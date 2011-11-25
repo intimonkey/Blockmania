@@ -43,13 +43,20 @@ Tools
 * [Slot1] Default block placement/removal tool
 * [Slot2] Multiple block selection tool
 * [Slot3] Rectangle block selection tool / blueprint prototype tool
-* [Slot4] Slime example plugin tool (left click to spawn a slimy slime buddy)
+* [Slot4] Physics enabled block removal tool
+* [Slot5] Physics enabled explosion tool
+* [Slot6] Slime example plugin tool (left click to spawn a slimy slime buddy)
 
 Example console commands
 ------------------------
 
 * "blockmania.initWorld();"                               Init. a new random world
 * "blockmania.getActiveWorldProvider().setTime(0.0);"     Set the world time
+
+Known Issues
+============
+
+* OpenAL might not work correctly using 64-bit versions of Windows 7. This can be easily fixed by replacing the active "OpenAL32.dll"-file in ".../Windows/System32" with a current version provided by New Dawn Software: https://www.newdawnsoftware.com/jenkins/view/OpenAL/job/OpenAL-win64/
 
 Credits
 =======
