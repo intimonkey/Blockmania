@@ -19,12 +19,14 @@ import com.github.begla.blockmania.blocks.BlockManager;
 import com.github.begla.blockmania.configuration.ConfigurationManager;
 import com.github.begla.blockmania.groovy.GroovyManager;
 import com.github.begla.blockmania.gui.HUD;
+import com.github.begla.blockmania.persistence.SaveHandler;
 import com.github.begla.blockmania.rendering.manager.FontManager;
 import com.github.begla.blockmania.rendering.manager.ShaderManager;
 import com.github.begla.blockmania.rendering.manager.VertexBufferObjectManager;
 import com.github.begla.blockmania.utilities.FastRandom;
 import com.github.begla.blockmania.world.characters.Player;
 import com.github.begla.blockmania.world.chunk.Chunk;
+import com.github.begla.blockmania.world.main.LocalWorldProvider;
 import com.github.begla.blockmania.world.main.World;
 import com.github.begla.blockmania.world.main.WorldProvider;
 import org.lwjgl.LWJGLException;
@@ -36,6 +38,7 @@ import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.DisplayMode;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.PixelFormat;
+import javax.vecmath.Vector3f;
 import org.newdawn.slick.SlickException;
 
 import java.io.File;
@@ -247,10 +250,23 @@ public final class Blockmania {
 
         // Init. a new world
         _world = new World(title, seed);
-        _world.setPlayer(new Player(_world));
+        SaveHandler saveData = getPlayerSaveHandler();
+        Vector3f spawnPoint = saveData.get("spawnPoint", null);
+        if (spawnPoint == null){
+        	_world.setPlayer(new Player(_world));
+        } else {
+        	_world.setPlayer(new Player(_world), spawnPoint);
+        }
 
         // Reset the delta value
         _lastLoopTime = getTime();
+    }
+    
+    private SaveHandler getPlayerSaveHandler(){
+    	return new SaveHandler(
+        		String.format("%s.player", ((LocalWorldProvider)_world.getWorldProvider()).getWorldSavePath())
+        );
+            	
     }
 
     /**
@@ -345,6 +361,13 @@ public final class Blockmania {
          */
         if (_saveWorldOnExit) {
             _world.dispose();
+            SaveHandler playerSaveHandler = getPlayerSaveHandler();
+            playerSaveHandler.set("spawnPoint", _world.getPlayer().getPosition());
+            try{
+            	playerSaveHandler.save();
+            }catch(IOException e){
+            	getLogger().log(Level.SEVERE, "failed to save player state");
+            }
         }
 
         _threadPool.shutdown();

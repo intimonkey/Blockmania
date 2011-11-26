@@ -16,20 +16,25 @@
 package com.github.begla.blockmania.world.main;
 
 import com.github.begla.blockmania.audio.AudioManager;
+import com.github.begla.blockmania.blocks.Block;
+import com.github.begla.blockmania.blocks.BlockManager;
 import com.github.begla.blockmania.blueprints.BlockGrid;
 import com.github.begla.blockmania.configuration.ConfigurationManager;
+import com.github.begla.blockmania.datastructures.BlockPosition;
 import com.github.begla.blockmania.game.Blockmania;
 import com.github.begla.blockmania.generators.ChunkGeneratorTerrain;
 import com.github.begla.blockmania.rendering.interfaces.RenderableObject;
 import com.github.begla.blockmania.rendering.manager.ShaderManager;
 import com.github.begla.blockmania.rendering.manager.TextureManager;
 import com.github.begla.blockmania.rendering.particles.BlockParticleEmitter;
+import com.github.begla.blockmania.utilities.MathHelper;
 import com.github.begla.blockmania.world.characters.MobManager;
 import com.github.begla.blockmania.world.characters.Player;
 import com.github.begla.blockmania.world.chunk.Chunk;
 import com.github.begla.blockmania.world.chunk.ChunkMesh;
 import com.github.begla.blockmania.world.chunk.ChunkUpdateManager;
 import com.github.begla.blockmania.world.horizon.Skysphere;
+import com.github.begla.blockmania.world.interfaces.BlockObserver;
 import com.github.begla.blockmania.world.physics.BulletPhysicsRenderer;
 import javolution.util.FastList;
 import org.lwjgl.opengl.GL20;
@@ -58,6 +63,8 @@ public final class World implements RenderableObject {
 
     /* PLAYER */
     private Player _player;
+    
+    private FastList<BlockObserver> _blockObservers = new FastList<BlockObserver>();
 
     /* CHUNKS */
     private FastList<Chunk> _chunksInProximity = new FastList<Chunk>();
@@ -74,7 +81,6 @@ public final class World implements RenderableObject {
 
     /* WATER AND LAVA ANIMATION */
     private int _tick = 0;
-    private long _lastTick;
 
     /* UPDATING */
     private final ChunkUpdateManager _chunkUpdateManager;
@@ -104,6 +110,8 @@ public final class World implements RenderableObject {
         _blockGrid = new BlockGrid(this);
         _bulletPhysicsRenderer = new BulletPhysicsRenderer(this);
 
+        _blockObservers.add(_chunkUpdateManager);
+        _blockObservers.add(_bulletPhysicsRenderer);
         createMusicTimeEvents();
     }
 
@@ -402,7 +410,7 @@ public final class World implements RenderableObject {
      *
      * @param p The player
      */
-    public void setPlayer(Player p) {
+    public void setPlayer(Player p, Vector3f spawnPoint) {
         if (_player != null) {
             _player.unregisterObserver(_chunkUpdateManager);
             _player.unregisterObserver(_bulletPhysicsRenderer);
@@ -412,17 +420,21 @@ public final class World implements RenderableObject {
         _player.registerObserver(_chunkUpdateManager);
         _player.registerObserver(_bulletPhysicsRenderer);
 
-        _player.setSpawningPoint(_worldProvider.nextSpawningPoint());
+        _player.setSpawningPoint(spawnPoint);
         _player.reset();
         _player.respawn();
+    }
+    
+    public void setPlayer(Player p){
+    	setPlayer(p, _worldProvider.nextSpawningPoint());
     }
 
     /**
      * Disposes this world.
      */
     public void dispose() {
+    	AudioManager.getInstance().stopAllSounds();
         _worldProvider.dispose();
-        AudioManager.getInstance().stopAllSounds();
     }
 
     @Override
@@ -472,5 +484,65 @@ public final class World implements RenderableObject {
 
     public BulletPhysicsRenderer getRigidBlocksRenderer() {
         return _bulletPhysicsRenderer;
+    }
+    
+    public class BlockInstance{
+    	public BlockPosition position;
+    	public Block block;
+    	public byte type;
+    	
+    	public BlockInstance(BlockPosition pos){
+    		this.position = pos;
+    		type = getWorldProvider().getBlock(position.x, position.y, position.z);
+    		block = BlockManager.getInstance().getBlock(type);
+    	}
+    	
+    	public BlockInstance getBlockAbove(){
+    		return new BlockInstance(new BlockPosition(position.x, position.y + 1, position.z));
+    	}
+    	
+    	private void remove(){
+    		this.remove(true);
+    	}
+    	
+    	private void remove(boolean emitParticles){
+    		getWorldProvider().setBlock(position.x, position.y, position.z, (byte) 0x0, true, true);
+    		if (emitParticles){
+                getBlockParticleEmitter().setOrigin(position.toVector3f());
+                getBlockParticleEmitter().emitParticles(256, type);
+    		}
+    		AudioManager.getInstance().getAudio("RemoveBlock").playAsSoundEffect(0.6f + (float) MathHelper.fastAbs(getWorldProvider().getRandom().randomDouble()) * 0.2f, 0.5f + (float) MathHelper.fastAbs(getWorldProvider().getRandom().randomDouble()) * 0.3f, false);
+    	}
+    	
+    	public boolean isBillboard(){
+    		return block.getBlockForm() == Block.BLOCK_FORM.BILLBOARD;
+    	}
+    }
+    
+    public BlockInstance removeBlock(BlockPosition position){
+    	return removeBlock(position, true);
+    }
+    /* removes a block described by the provided position, as a convenience it
+     * removes the BlockInstance for the removed block. 
+     * 
+     * optionally emits particles for the removed block
+     */
+    public BlockInstance removeBlock(BlockPosition position, boolean emitParticles){
+    	BlockInstance instance = new BlockInstance(position);
+    	instance.remove();
+
+    	BlockInstance blockAbove = instance.getBlockAbove();
+        if (blockAbove.isBillboard()) blockAbove.remove(false);
+    	
+        int chunkPosX = MathHelper.calcChunkPosX(instance.position.x);
+        int chunkPosZ = MathHelper.calcChunkPosZ(instance.position.z);
+        for (BlockObserver ob : _blockObservers)
+        	ob.blockRemoved(getWorldProvider().getChunkProvider().loadOrCreateChunk(chunkPosX, chunkPosZ), instance.position);
+        
+        //getWorldProvider().getChunkProvider().unspreadLight(instance.position.x, instance.position.y, instance.position.z, blockLightPrev, Chunk.LIGHT_TYPE.BLOCK);
+        System.out.println("un-spread");
+
+        
+        return instance;
     }
 }
