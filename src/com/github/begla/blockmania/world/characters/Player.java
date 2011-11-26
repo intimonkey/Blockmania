@@ -48,6 +48,7 @@ import java.util.logging.Level;
  */
 public final class Player extends Character {
 
+	private final int BLOCK_SELECTION_RADIUS = 3;
     /* OBSERVERS */
     private FastList<BlockObserver> _observers = new FastList<BlockObserver>();
 
@@ -149,9 +150,9 @@ public final class Player extends Character {
      */
     public RayBlockIntersection.Intersection calcSelectedBlock() {
         FastList<RayBlockIntersection.Intersection> inters = new FastList<RayBlockIntersection.Intersection>();
-        for (int x = -3; x <= 3; x++) {
-            for (int y = -3; y <= 3; y++) {
-                for (int z = -3; z <= 3; z++) {
+        for (int x = -BLOCK_SELECTION_RADIUS; x <= BLOCK_SELECTION_RADIUS; x++) {
+            for (int y = -BLOCK_SELECTION_RADIUS; y <= BLOCK_SELECTION_RADIUS; y++) {
+                for (int z = -BLOCK_SELECTION_RADIUS; z <= BLOCK_SELECTION_RADIUS; z++) {
                     byte blockType = _parent.getWorldProvider().getBlock((int) (getPosition().x + x), (int) (getPosition().y + y), (int) (getPosition().z + z));
 
                     // Ignore special blocks
@@ -250,6 +251,7 @@ public final class Player extends Character {
         }
     }
 
+    
     /**
      * Removes a block.
      */
@@ -260,27 +262,12 @@ public final class Player extends Character {
             RayBlockIntersection.Intersection is = calcSelectedBlock();
             if (is != null) {
                 BlockPosition blockPos = is.getBlockPosition();
-                byte currentBlockType = getParent().getWorldProvider().getBlock(blockPos.x, blockPos.y, blockPos.z);
-                getParent().getWorldProvider().setBlock(blockPos.x, blockPos.y, blockPos.z, (byte) 0x0, true, true);
-
-                // Remove the upper block if it's a billboard
-                byte upperBlockType = getParent().getWorldProvider().getBlock(blockPos.x, blockPos.y + 1, blockPos.z);
-                if (BlockManager.getInstance().getBlock(upperBlockType).getBlockForm() == Block.BLOCK_FORM.BILLBOARD) {
-                    getParent().getWorldProvider().setBlock(blockPos.x, blockPos.y + 1, blockPos.z, (byte) 0x0, true, true);
-                }
-
-                _parent.getBlockParticleEmitter().setOrigin(blockPos.toVector3f());
-                _parent.getBlockParticleEmitter().emitParticles(256, currentBlockType);
-                AudioManager.getInstance().getAudio("RemoveBlock").playAsSoundEffect(0.6f + (float) MathHelper.fastAbs(_parent.getWorldProvider().getRandom().randomDouble()) * 0.2f, 0.5f + (float) MathHelper.fastAbs(_parent.getWorldProvider().getRandom().randomDouble()) * 0.3f, false);
-
-                if (createPhysBlock && !BlockManager.getInstance().getBlock(currentBlockType).isTranslucent()) {
+                World.BlockInstance bi = getParent().removeBlock(blockPos);
+               
+                if (createPhysBlock && !bi.block.isTranslucent()) {
                     Vector3f pos = blockPos.toVector3f();
-                    _parent.getRigidBlocksRenderer().addBlock(pos, currentBlockType);
+                    _parent.getRigidBlocksRenderer().addBlock(pos, bi.type);
                 }
-
-                int chunkPosX = MathHelper.calcChunkPosX(blockPos.x);
-                int chunkPosZ = MathHelper.calcChunkPosZ(blockPos.z);
-                notifyObserversBlockRemoved(_parent.getWorldProvider().getChunkProvider().loadOrCreateChunk(chunkPosX, chunkPosZ), blockPos);
             }
         }
     }
